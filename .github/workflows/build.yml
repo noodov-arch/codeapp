@@ -57,16 +57,15 @@ jobs:
       - name: Build for iOS
         run: |
           xcodebuild archive \
-            -scheme "Code App" \
-            -configuration Release \
-            -derivedDataPath build \
-            -archivePath build/CodeApp.xcarchive \
-            -destination generic/platform=iOS \
-            -arch arm64 \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE="" \
-            OTHER_CODE_SIGN_FLAGS="--remove-signature" || true
+          -scheme "Code App" \
+          -configuration Release \
+          -derivedDataPath build \
+          -archivePath build/CodeApp.xcarchive \
+          -destination generic/platform=iOS \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          PROVISIONING_PROFILE="" \
+          OTHER_CODE_SIGN_FLAGS="--remove-signature" || true
       
       - name: Export IPA
         if: success()
