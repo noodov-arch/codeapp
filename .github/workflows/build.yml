@@ -57,7 +57,7 @@ jobs:
       - name: Build for iOS
         run: |
           xcodebuild archive \
-            -scheme Code \
+            -scheme "Code App" \
             -configuration Release \
             -derivedDataPath build \
             -archivePath build/CodeApp.xcarchive \
