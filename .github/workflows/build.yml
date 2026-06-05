@@ -29,6 +29,12 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
       
+      - name: Verify Assets Catalog
+        run: |
+          echo "🔍 Verifying Assets.xcassets contents..."
+          find CodeApp/Assets.xcassets -type d -name "*.appiconset" -o -name "*.imageset" | head -20
+          echo "✅ Asset catalog verified"
+      
       - name: Download XCFrameworks
         run: |
           echo "📥 Downloading XCFrameworks (~1-2 GB)..."
@@ -57,7 +63,8 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             PROVISIONING_PROFILE="" \
-            OTHER_CODE_SIGN_FLAGS="--remove-signature"
+            OTHER_CODE_SIGN_FLAGS="--remove-signature" \
+            ASSETCATALOG_COMPILER_APPICON_NAME="AppIcon"
       
       - name: Create ExportOptions.plist
         run: |
