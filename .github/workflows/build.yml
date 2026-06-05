@@ -14,16 +14,75 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Set up Xcode
         run: |
           sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
       
-      - name: Install dependencies
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+      
+      - name: Install CocoaPods dependencies
         run: |
           if [ -f "Podfile" ]; then
-            pod install
+            pod install --repo-update
+          fi
+      
+      - name: Download/Verify XCFrameworks
+        run: |
+          # Create Resources directory structure if missing
+          mkdir -p Resources/Term Resources/NodeJS Resources/PHP Resources/PythonAux Resources/llvm Resources/NMSSH
+          
+          # Check which frameworks are missing
+          echo "Checking for required XCFrameworks..."
+          MISSING_FRAMEWORKS=()
+          
+          for framework in \
+            "Resources/Term/ios_system.xcframework" \
+            "Resources/Term/curl_ios.xcframework" \
+            "Resources/NMSSH.xcframework" \
+            "Resources/Term/openssl.xcframework" \
+            "Resources/Term/libssh2.xcframework" \
+            "Resources/NodeJS/NodeMobile.xcframework" \
+            "Resources/PHP/php.xcframework" \
+            "Resources/Term/network_ios.xcframework" \
+            "Resources/PythonAux/freetype.xcframework" \
+            "Resources/Term/lg2.xcframework" \
+            "Resources/llvm/ar.xcframework" \
+            "Resources/llvm/link.xcframework" \
+            "Resources/llvm/libLLVM.xcframework" \
+            "Resources/llvm/lld.xcframework" \
+            "Resources/llvm/clang.xcframework" \
+            "Resources/llvm/nm.xcframework" \
+            "Resources/llvm/dis.xcframework" \
+            "Resources/llvm/llc.xcframework" \
+            "Resources/llvm/lli.xcframework" \
+            "Resources/llvm/opt.xcframework" \
+            "Resources/Term/libssh2.xcframework" \
+            "Resources/Term/ssh_cmd.xcframework" \
+            "Resources/Term/files.xcframework" \
+            "Resources/Term/awk.xcframework" \
+            "Resources/Term/text.xcframework" \
+            "Resources/Term/shell.xcframework" \
+            "Resources/Term/tar.xcframework" \
+            "Resources/PythonAux/libpng.xcframework" \
+            "Resources/PythonAux/harfbuzz.xcframework"
+          do
+            if [ ! -d "$framework" ]; then
+              MISSING_FRAMEWORKS+=("$framework")
+            fi
+          done
+          
+          if [ ${#MISSING_FRAMEWORKS[@]} -gt 0 ]; then
+            echo "WARNING: Missing XCFrameworks:"
+            printf '%s\n' "${MISSING_FRAMEWORKS[@]}"
+            echo "Note: These frameworks need to be built or downloaded from your source"
           fi
       
       - name: Create ExportOptions.plist
@@ -46,6 +105,8 @@ jobs:
               <string></string>
               <key>uploadBitcode</key>
               <false/>
+              <key>provisioningProfiles</key>
+              <dict/>
           </dict>
           </plist>
           EOF
@@ -62,13 +123,13 @@ jobs:
           -derivedDataPath build \
           -archivePath build/CodeApp.xcarchive \
           -destination generic/platform=iOS \
+          -allowProvisioningUpdates \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           PROVISIONING_PROFILE="" \
-          OTHER_CODE_SIGN_FLAGS="--remove-signature" || true
+          OTHER_CODE_SIGN_FLAGS="--remove-signature"
       
       - name: Export IPA
-        if: success()
         run: |
           xcodebuild -exportArchive \
             -archivePath build/CodeApp.xcarchive \
@@ -81,13 +142,12 @@ jobs:
           find build -name "*.ipa" -type f
           IPA_FILE=$(find build -name "*.ipa" -type f | head -1)
           if [ -z "$IPA_FILE" ]; then
-            echo "WARNING: IPA file not found"
-            exit 0
+            echo "ERROR: IPA file not found after export"
+            exit 1
           fi
           echo "IPA_PATH=$IPA_FILE" >> $GITHUB_ENV
       
       - name: Upload IPA artifact
-        if: env.IPA_PATH != ''
         uses: actions/upload-artifact@v4
         with:
           name: CodeApp-iOS
@@ -95,7 +155,7 @@ jobs:
           retention-days: 30
       
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/') && env.IPA_PATH != ''
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ env.IPA_PATH }}
@@ -115,7 +175,7 @@ jobs:
       
       - name: Get IPA file info
         run: |
-          ls -lh *.ipa || echo "No IPA files found"
+          ls -lh *.ipa
           echo "IPA file ready for SideStore deployment"
       
       - name: Upload to releases
